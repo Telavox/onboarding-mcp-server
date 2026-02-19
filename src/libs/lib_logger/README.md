@@ -13,6 +13,7 @@ Advanced Python logging library with pluggable adapters, async-safe trace IDs, a
 
 ## Installation
 
+
 ```bash
 # In workspace projects
 uv add lib_logger --source workspace
