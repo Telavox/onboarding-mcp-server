@@ -1,0 +1,59 @@
+# Cloud Build config for onboarding-mcp -> Cloud Run
+# Trigger: push to main (with path filters for this app + shared libs)
+
+substitutions:
+  _AR_HOSTNAME: europe-west1-docker.pkg.dev
+  _AR_PROJECT_ID: telavox-dmo-mcp
+  _AR_REPOSITORY: mcps
+  _DEPLOY_REGION: europe-west1
+  _PLATFORM: managed
+  _SERVICE_NAME: onboarding-mcp
+  _TRIGGER_ID: 7f84f4e5-6b51-4104-9239-a0150238ad6d
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - src/apps/onboarding-mcp/Dockerfile
+      - -t
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}
+      - -t
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:latest
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:latest
+
+  - name: gcr.io/cloud-builders/gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image=${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}
+      - --region=${_DEPLOY_REGION}
+      - --platform=${_PLATFORM}
+      - --project=${_AR_PROJECT_ID}
+      - --port=8000
+      - --memory=512Mi
+      - --cpu=1
+      - --timeout=300s
+      - --concurrency=80
+      - --min-instances=0
+      - --allow-unauthenticated
+      - --set-env-vars=GCP_PROJECT=telavox-dmo-mcp,LOG_LEVEL=INFO,LOG_ENV=google
+      - --quiet
+
+images:
+  - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}
+  - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY
